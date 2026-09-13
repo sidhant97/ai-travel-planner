@@ -1,0 +1,23 @@
+# Environment variables and API keys
+.env
+*.env
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# Vector Store (ChromaDB local databases)
+chroma_store/
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Operating System & IDE files
+.vscode/
+.DS_Store
+Thumbs.db
+*.log
