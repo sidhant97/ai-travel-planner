@@ -13,17 +13,17 @@ DESTINATION_REGISTRY = {
         "gdrive_files": [
             {
                 "filename": "visit_singapore_itineraries.md",
-                "file_id": "REPLACE_WITH_ITINERARIES_FILE_ID",
+                "file_id": "1o8tiBgIOy6x38e3xyHVXtjbCspOQdLz-",
                 "source_url": "https://www.visitsingapore.com/travel-tips/travelling-to-singapore/itineraries/"
             },
             {
                 "filename": "visit_singapore_practical.md",
-                "file_id": "REPLACE_WITH_PRACTICAL_FILE_ID",
+                "file_id": "1o8tiBgIOy6x38e3xyHVXtjbCspOQdLz-",
                 "source_url": "https://www.visitsingapore.com/travel-tips/essential-travel-information/"
             },
             {
                 "filename": "wikivoyage_singapore.md",
-                "file_id": "REPLACE_WITH_WIKIVOYAGE_FILE_ID",
+                "file_id": "1o8tiBgIOy6x38e3xyHVXtjbCspOQdLz-",
                 "source_url": "https://en.wikivoyage.org/wiki/Singapore"
             }
         ]
