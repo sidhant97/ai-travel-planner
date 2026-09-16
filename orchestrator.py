@@ -2,16 +2,22 @@ import os
 import json
 import logging
 from dotenv import load_dotenv
-from groq import Groq
-from langsmith import traceable
-from openai import OpenAI
+
+# Ensure environment variables load before LangChain components initialize
+load_dotenv()
+
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+from langchain_core.tools import StructuredTool
+from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
+
 from rag_engine import RAGEngine
 from mcp_client import MCPClient
 from guardrails import Guardrails
 from prompts import ROUTER_SYSTEM_PROMPT, SYNTHESIS_SYSTEM_PROMPT, build_synthesis_user_prompt
 
-load_dotenv()
 logger = logging.getLogger(__name__)
+
 
 class TravelAgentOrchestrator:
     def __init__(self):
@@ -21,60 +27,70 @@ class TravelAgentOrchestrator:
         # Groq Configuration (Primary)
         self.groq_key = os.getenv("GROQ_API_KEY")
         self.groq_model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
-        self.groq_client = Groq(api_key=self.groq_key) if self.groq_key else None
+        self.groq_llm = (
+            ChatGroq(
+                model=self.groq_model,
+                groq_api_key=self.groq_key,
+                temperature=0.2,
+            )
+            if self.groq_key
+            else None
+        )
 
         # OpenAI Configuration (Backup/Fallback)
         self.openai_key = os.getenv("OPENAI_API_KEY")
         self.openai_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-        self.openai_client = OpenAI(api_key=self.openai_key) if self.openai_key else None
+        self.openai_llm = (
+            ChatOpenAI(
+                model=self.openai_model,
+                api_key=self.openai_key,
+                temperature=0.2,
+            )
+            if self.openai_key
+            else None
+        )
 
-    @traceable(name="travel_agent_pipeline", run_type="chain")
-    def _call_llm_with_fallback(self, messages: list, tools: list = None, preferred_provider: str = "Auto"):
+    def _convert_messages_to_langchain(self, raw_messages: list) -> list:
+        """Converts raw dict messages to LangChain BaseMessage instances."""
+        formatted = []
+        for msg in raw_messages:
+            role = msg.get("role")
+            content = msg.get("content", "")
+            if role == "system":
+                formatted.append(SystemMessage(content=content))
+            elif role == "assistant":
+                formatted.append(AIMessage(content=content))
+            else:
+                formatted.append(HumanMessage(content=content))
+        return formatted
+
+    def _get_active_chain(self, preferred_provider: str = "Auto", tools: list = None):
         """
-        Executes chat completion with automated fallback.
-        Priority: Groq -> OpenAI (if preferred_provider is 'Auto' or 'Groq')
+        Builds the invocation chain using LangChain's native .with_fallbacks().
+        Automatically logs model runs, token counts, and fallbacks to LangSmith.
         """
+        groq_model = self.groq_llm
+        openai_model = self.openai_llm
+
+        if tools:
+            if groq_model:
+                groq_model = groq_model.bind_tools(tools)
+            if openai_model:
+                openai_model = openai_model.bind_tools(tools)
+
         use_openai_first = preferred_provider == "OpenAI"
 
-        # Route to OpenAI directly if requested
-        if use_openai_first and self.openai_client:
-            try:
-                kwargs = {"model": self.openai_model, "messages": messages, "temperature": 0.2}
-                if tools:
-                    kwargs["tools"] = tools
-                    kwargs["tool_choice"] = "auto"
-                res = self.openai_client.chat.completions.create(**kwargs)
-                return res, "OpenAI (Manual)"
-            except Exception as err:
-                logger.error(f"OpenAI error: {err}")
+        if use_openai_first and openai_model:
+            return openai_model.with_fallbacks([groq_model]) if groq_model else openai_model
+        
+        if groq_model:
+            return groq_model.with_fallbacks([openai_model]) if openai_model else groq_model
 
-        # Try Groq first (Default behavior)
-        if self.groq_client:
-            try:
-                kwargs = {"model": self.groq_model, "messages": messages, "temperature": 0.2}
-                if tools:
-                    kwargs["tools"] = tools
-                    kwargs["tool_choice"] = "auto"
-                res = self.groq_client.chat.completions.create(**kwargs)
-                return res, "Groq"
-            except Exception as groq_err:
-                logger.warning(f"Groq failed ({groq_err}). Triggering OpenAI backup failover...")
-
-        # Fallback to OpenAI if Groq fails or wasn't configured
-        if self.openai_client:
-            try:
-                kwargs = {"model": self.openai_model, "messages": messages, "temperature": 0.2}
-                if tools:
-                    kwargs["tools"] = tools
-                    kwargs["tool_choice"] = "auto"
-                res = self.openai_client.chat.completions.create(**kwargs)
-                return res, "OpenAI (Fallback)"
-            except Exception as openai_err:
-                raise RuntimeError(f"Both Primary (Groq) and Fallback (OpenAI) failed. Groq error, OpenAI error: {openai_err}")
+        if openai_model:
+            return openai_model
 
         raise RuntimeError("No operational LLM provider available. Check your API keys in .env.")
 
-    @traceable(name="travel_agent_pipeline", run_type="chain")
     def process_query(self, user_query: str, chat_history: list = None, preferred_provider: str = "Auto") -> dict:
         # 1. Input Guardrails
         check = Guardrails.validate_input(user_query)
@@ -83,29 +99,24 @@ class TravelAgentOrchestrator:
                 "reply": check["reason"],
                 "sources": [],
                 "mcp_data": [],
-                "provider_used": "Guardrails"
+                "provider_used": "Guardrails",
             }
 
         # 2. Tool-Routing Assessment
-        tools = self.mcp.get_tool_definitions()
-        router_messages = [
+        raw_tools = self.mcp.get_tool_definitions()
+        router_messages = self._convert_messages_to_langchain([
             {"role": "system", "content": ROUTER_SYSTEM_PROMPT},
-            {"role": "user", "content": user_query}
-        ]
+            {"role": "user", "content": user_query},
+        ])
 
-        tool_call_res, routing_provider = self._call_llm_with_fallback(
-            messages=router_messages,
-            tools=tools,
-            preferred_provider=preferred_provider
-        )
+        router_chain = self._get_active_chain(preferred_provider=preferred_provider, tools=raw_tools)
+        tool_call_res = router_chain.invoke(router_messages)
 
         executed_mcp_data = []
-        response_msg = tool_call_res.choices[0].message
-
-        if response_msg.tool_calls:
-            for call in response_msg.tool_calls:
-                fn_name = call.function.name
-                fn_args = json.loads(call.function.arguments)
+        if hasattr(tool_call_res, "tool_calls") and tool_call_res.tool_calls:
+            for call in tool_call_res.tool_calls:
+                fn_name = call["name"]
+                fn_args = call["args"]
                 result = self.mcp.execute_tool(fn_name, fn_args)
                 executed_mcp_data.append({"tool": fn_name, "args": fn_args, "result": result})
 
@@ -117,23 +128,24 @@ class TravelAgentOrchestrator:
         mcp_data_str = json.dumps(executed_mcp_data, indent=2) if executed_mcp_data else ""
         user_prompt_content = build_synthesis_user_prompt(user_query, knowledge_context, mcp_data_str)
 
-        final_messages = [{"role": "system", "content": SYNTHESIS_SYSTEM_PROMPT}]
+        raw_final_messages = [{"role": "system", "content": SYNTHESIS_SYSTEM_PROMPT}]
         if chat_history:
-            final_messages.extend(chat_history[-4:])
-        final_messages.append({"role": "user", "content": user_prompt_content})
+            raw_final_messages.extend(chat_history[-4:])
+        raw_final_messages.append({"role": "user", "content": user_prompt_content})
 
-        completion, final_provider = self._call_llm_with_fallback(
-            messages=final_messages,
-            tools=None,
-            preferred_provider=preferred_provider
-        )
+        final_messages = self._convert_messages_to_langchain(raw_final_messages)
+        synthesis_chain = self._get_active_chain(preferred_provider=preferred_provider, tools=None)
+        completion = synthesis_chain.invoke(final_messages)
 
-        reply = completion.choices[0].message.content
+        reply = completion.content
         sources = list(set([c["source"] for c in retrieved_chunks]))
+
+        # Extract provider/model details recorded by LangChain
+        provider_used = completion.response_metadata.get("model_name", preferred_provider)
 
         return {
             "reply": reply,
             "sources": sources,
             "mcp_data": executed_mcp_data,
-            "provider_used": final_provider
+            "provider_used": provider_used,
         }
