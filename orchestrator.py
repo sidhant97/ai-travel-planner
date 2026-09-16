@@ -3,6 +3,7 @@ import json
 import logging
 from dotenv import load_dotenv
 from groq import Groq
+from langsmith import traceable
 from openai import OpenAI
 from rag_engine import RAGEngine
 from mcp_client import MCPClient
@@ -27,6 +28,7 @@ class TravelAgentOrchestrator:
         self.openai_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
         self.openai_client = OpenAI(api_key=self.openai_key) if self.openai_key else None
 
+    @traceable(name="travel_agent_pipeline", run_type="chain")
     def _call_llm_with_fallback(self, messages: list, tools: list = None, preferred_provider: str = "Auto"):
         """
         Executes chat completion with automated fallback.
@@ -72,6 +74,7 @@ class TravelAgentOrchestrator:
 
         raise RuntimeError("No operational LLM provider available. Check your API keys in .env.")
 
+    @traceable(name="travel_agent_pipeline", run_type="chain")
     def process_query(self, user_query: str, chat_history: list = None, preferred_provider: str = "Auto") -> dict:
         # 1. Input Guardrails
         check = Guardrails.validate_input(user_query)
