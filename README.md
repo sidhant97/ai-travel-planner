@@ -299,7 +299,3 @@ ai-travel-planner/
 * **Developer Name:** Sidhant Gupta
 * **Email:** guptasidhant1997@gmail.com
 * **Contact Number:** +91-9996764596
-
-```
-
-```
