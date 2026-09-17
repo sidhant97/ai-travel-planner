@@ -33,12 +33,8 @@ While Singapore is implemented as the reference destination, the architecture is
 * **Conversation Context Memory:** Multi-turn dialogue management using a sliding conversation window, preserving user budgets, origin currency, duration, and dietary preferences across turns.
 * **Domain Guardrails:** Strict input boundary validation that catches and rejects queries outside travel planning (e.g., ticket bookings, coding, general trivia).
 
-### RAG Ingestion & Query Workflow
+### RAG Ingestion & QueryWorkflow
 
-
-
-
-```mermaid
 flowchart TD
     subgraph Ingestion["1. Ingestion Pipeline (Offline)"]
         A[Markdown Travel Guides<br/><code>data/&lt;destination&gt;/*.md</code>] --> B[RecursiveCharacterTextSplitter<br/><code>chunk=1000, overlap=150</code>]
