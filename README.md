@@ -12,7 +12,7 @@ While Singapore is implemented as the reference destination, the architecture is
 * **Source Code Repository :** [ai-travel-planner](https://github.com/sidhant97/ai-travel-planner.git)
 * **Working Application:** Fully functional Streamlit interface executable locally on port `8501`.
 * **Backup Source Code:** [Google Drive Link]
-* **Demonstration Video :** [Google Drive Link] *(Walkthrough showcasing pure RAG retrieval, MCP tool calling, combined context synthesis, and conversational context memory).*
+* **Demonstration Video :** [[Google Drive Link](https://drive.google.com/file/d/1vcfDjJgVgKFfjmJjlE22aCiVreiQIEjn/view?usp=sharing)] *(Walkthrough showcasing pure RAG retrieval, MCP tool calling, combined context synthesis, and conversational context memory).*
 
 ---
 
