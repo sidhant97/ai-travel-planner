@@ -23,6 +23,13 @@ While Singapore is implemented as the reference destination, the architecture is
 * **Conversation Context Memory**: Multi-turn dialogue management preserving user preferences, constraints, and budget variables across follow-up queries.
 
 ---
+## 📂 Project Assets
+
+* **GitHub Repository:** [sidhant97/ai-travel-planner](https://github.com/sidhant97/ai-travel-planner.git)
+* **Source Code (Backup):** [Google Drive Link]
+* **Demo Recording:** [Google Drive Link]
+
+---
 
 ## External APIs & MCP Tool Specifications
 
@@ -205,3 +212,12 @@ python test_suite.py
 * **Containerization & Orchestration**: Package the application into lightweight Docker containers and orchestrate deployments via Kubernetes (EKS/GKE) with horizontal pod autoscaling for high-concurrency usage.
 * **Expanded Multi-Country Support**: Extend automated ingestion pipelines to pull, validate, and chunk multi-country travel boards, dynamically switching vector namespaces based on user destination selection.
 * **Extended Tool Integrations**: Add transit routing MCP tools (Google Maps / Citymapper) and flight/hotel price estimation scrapers.
+
+
+##  Developer Profile
+
+* **Developer Name:** Sidhant Gupta
+* **Email Contact:** guptasidhant1997@gmail.com
+* **Contact Number:** +91-9996764596
+
+```
