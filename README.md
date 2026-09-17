@@ -1,223 +1,308 @@
 # AI Travel Planning Assistant
 
-A context-aware travel assistant combining a modular document-based knowledge base (Retrieval-Augmented Generation) with dynamic Model Context Protocol (MCP) tool execution. The application synthesizes static travel guide knowledge with live weather forecasts and currency exchange rates to create weather-adaptive, budget-tailored itineraries.
+A context-aware travel assistant combining a modular document-based knowledge base (Retrieval-Augmented Generation) with dynamic Model Context Protocol (MCP) tool execution. The application synthesizes static travel guide knowledge with live weather forecasts and real-time currency exchange rates to create weather-adaptive, budget-tailored itineraries.
 
 While Singapore is implemented as the reference destination, the architecture is country-agnostic and modular to support multiple international destinations.
 
 ---
 
-## System Architecture & Workflow
+## 1. Deliverables & Project Assets
 
-![alt text](workflow.png)
-
-### Key Components
-
-* **Dual-LLM Resilience**: Default low-latency routing and synthesis via **Groq** (`llama-3.1-8b-instant`), with automated failover targeting **OpenAI** (`gpt-4o-mini`).
-* **Modular Multi-Country Knowledge Store**: Extensible document ingestion utilizing LangChain and ChromaDB. Each country operates under its own isolated vector namespace (`data/<destination>/`), allowing seamless dynamic loading of additional destinations (e.g., Japan, France, UAE).
-* **Real-Time MCP Tools**:
-* `get_weather`: Live multi-day weather forecasts, temperature metrics, and precipitation probabilities.
-* `convert_currency`: Real-time foreign exchange conversions using ECB reference rates.
-
-
-* **Context Synthesis Engine**: Combines static destination knowledge with real-time variables. Dynamically swaps outdoor excursions for indoor attractions whenever rainfall probability exceeds 40%.
-* **Conversation Context Memory**: Multi-turn dialogue management preserving user preferences, constraints, and budget variables across follow-up queries.
-
----
-## 📂 Project Assets
-
-* **GitHub Repository:** [sidhant97/ai-travel-planner](https://github.com/sidhant97/ai-travel-planner.git)
-* **Source Code (Backup):** [Google Drive Link]
-* **Demo Recording:** [Google Drive Link]
+* **Source Code Repository (Item 15):** [GitHub Repository](https://github.com/sidhant97/ai-travel-planner.git)
+* **Working Application (Item 16):** Fully functional Streamlit interface executable locally on port `8501`.
+* **Backup Source Code:** [Google Drive Link]
+* **Demonstration Video (Item 20):** [Google Drive Link] *(A short walkthrough showcasing pure RAG retrieval, MCP tool calling, combined context synthesis, and conversational context memory).*
 
 ---
 
-## External APIs & MCP Tool Specifications
+## 2. System Architecture & RAG Workflow (Item 18)
 
-Both external tool APIs require **no API keys** and are free for open evaluation:
+### System Architecture
 
-### 1. Weather Forecast Service: Open-Meteo
+![System Architecture Workflow](workflow.png)
 
-* **Provider**: Open-Meteo
-* **Base Endpoint**: `[https://api.open-meteo.com/v1/forecast](https://api.open-meteo.com/v1/forecast)`
-* **Authentication**: None required
-* **Sample Request**:
-```text
-GET https://api.open-meteo.com/v1/forecast?latitude=1.3521&longitude=103.8198&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia/Singapore
+### Key Architectural Layers
 
-```
+* **Dual-LLM Resilience**: Default routing via **Groq** (`llama-3.1-8b-instant`) for ultra-low-latency response generation. If API rate limits, provider downtime, or malformed responses occur, the orchestrator automatically fails over to **OpenAI** (`gpt-4o-mini`).
+* **Modular Multi-Country Vector Store**: Extensible document ingestion utilizing LangChain and **ChromaDB**. Each destination operates inside an isolated vector namespace (`data/<destination>/`), preventing cross-destination data bleeding and enabling seamless dynamic expansion (e.g., Japan, France, UAE).
+* **Real-Time MCP Tool Integration**:
+  * `get_weather`: Live multi-day weather forecasts, temperature ranges, and precipitation probability metrics.
+  * `convert_currency`: Real-time foreign exchange conversions referencing European Central Bank daily rates.
+* **Context Synthesis Engine**: Cross-references destination landmarks with real-time variables. Dynamically swaps outdoor excursions for covered/indoor alternatives whenever precipitation probability exceeds **40%**.
+* **Conversation Context Memory**: Multi-turn dialogue management using a sliding conversation window, preserving user budgets, origin currency, duration, and dietary preferences across turns.
+* **Domain Guardrails**: Strict input boundary validation that catches and rejects queries outside travel planning (e.g., ticket bookings, coding, general trivia).
 
+### RAG Ingestion & Query Workflow
 
-* **Payload Output**: Max/min daily temperatures, precipitation probability metrics, and weather conditions used to evaluate indoor/outdoor routing.
+[Markdown Travel Guides] (data//*.md)
+│
+▼
+[RecursiveCharacterTextSplitter] (chunk_size=1000, chunk_overlap=150)
+│
+▼
+[Vector Embeddings] (HuggingFace / OpenAI Embeddings)
+│
+▼
+[ChromaDB Namespaces] (e.g., ./chroma_store/singapore)
+│
+▼ (Semantic Similarity Search: Top-K Chunks)
+[Context Synthesis Orchestrator] ◄───► [MCP Tools: Weather & FX]
+│
+▼
+[Grounded Model Output]
 
-### 2. Foreign Exchange Service: Frankfurter
-
-* **Provider**: Frankfurter API
-* **Base Endpoint**: `[https://api.frankfurter.app/latest](https://api.frankfurter.app/latest)`
-* **Authentication**: None required (European Central Bank reference data)
-* **Sample Request**:
-```text
-GET https://api.frankfurter.app/latest?amount=60000&from=INR&to=SGD
-
-```
-
-
-* **Payload Output**: Exact exchange rate, date reference, and converted sums used to anchor travelers' localized spending limits.
-
----
-
-## Prompt Engineering Strategy
-
-Prompts are designed to enforce strict grounding, contextual integrity, and source distinction:
-
-* **Grounding & Zero-Hallucination**: The model is instructed to draw destination facts exclusively from retrieved chunks. If the vector store does not contain the required data, it explicitly reports that information is unavailable rather than fabricating facts.
-* **Tool-RAG Boundary Enforcement**: Static domain knowledge (attractions, culture, neighborhoods) must come from RAG. Dynamic, time-sensitive metrics (weather, currency conversion) must strictly trigger MCP tools.
-* **Provenance Attribution**: Outputs explicitly tag the origin of each data point, differentiating between static knowledge base citations, live MCP tool returns, and general AI reasoning.
-* **Conditional Logic Execution**: Synthesizes weather metrics into actionable itinerary adjustments, automatically proposing indoor alternatives (museums, covered conservatories, shopping malls) when precipitation probability triggers adverse thresholds.
 
 ---
 
-## Environment Configuration (.env)
+## 3. Knowledge-Base Sources & Obtaining Instructions (Items 17 & 18)
 
-Create a `.env` file in the project root containing these parameters:
+The reference implementation uses static travel documentation stored in `data/singapore/`.
 
-```ini
-# LLM Providers (Groq Primary + OpenAI Fallback)
+### Knowledge Sources Used
+
+* **Wikivoyage: Singapore Travel Guide**: Transportation systems, neighborhood zones, cultural etiquette, local customs, and practical tips.
+* **Visit Singapore: Essential Travel Information**: Public transit cards (EZ-Link/STP), climate advisories, local laws, fines, and connectivity.
+* **Visit Singapore: Sample Itineraries & Things to Do**: Multi-day route blueprints, family-friendly activities, and major landmarks.
+
+### Instructions for Obtaining & Adding Documents
+
+To add new destination knowledge bases or update existing ones:
+1. Create a markdown document inside the appropriate country folder: `data/<destination_name>/` (e.g., `data/japan/tokyo_guide.md`).
+2. Source text from open-access guides (such as Wikivoyage, official tourism boards, or municipal transit guides) and convert them to clean Markdown files without raw HTML tags.
+3. Ingest the documents into the persistent vector database by running:
+   ```bash
+   python rag_engine.py
+4. MCP Tools & API Specifications (Item 18)
+Both integrated tools require no API keys and operate using the Model Context Protocol pattern:
+
+1. Weather Forecast Service: Open-Meteo
+Base Endpoint: https://api.open-meteo.com/v1/forecast
+
+Method: GET
+
+Authentication: None required
+
+Sample Request:
+
+Plaintext
+GET [https://api.open-meteo.com/v1/forecast?latitude=1.3521&longitude=103.8198&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia/Singapore](https://api.open-meteo.com/v1/forecast?latitude=1.3521&longitude=103.8198&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia/Singapore)
+Payload Output: Maximum and minimum daily temperatures, precipitation probability metrics, and weather condition codes used to dynamically trigger indoor alternatives.
+
+2. Foreign Exchange Service: Frankfurter
+Base Endpoint: https://api.frankfurter.app/latest
+
+Method: GET
+
+Authentication: None required (European Central Bank reference data)
+
+Sample Request:
+
+Plaintext
+GET [https://api.frankfurter.app/latest?amount=60000&from=INR&to=SGD](https://api.frankfurter.app/latest?amount=60000&from=INR&to=SGD)
+Payload Output: Real-time exchange rates and converted currency totals used to establish localized traveler spending limits.
+
+5. Prompt Engineering & Context Strategy (Item 18)
+Strict Grounding & Zero-Hallucination: The model is strictly instructed to draw destination facts exclusively from retrieved chunks. If the vector store lacks the requested information, the model explicitly states that the information is unavailable rather than fabricating recommendations.
+
+Tool-RAG Boundary Enforcement: Static domain knowledge (attractions, culture, neighborhoods) must come from RAG retrieval. Dynamic, time-sensitive metrics (weather, currency rates) must strictly trigger MCP tools.
+
+Explicit Provenance Attribution: Every response attributes its data points to their origin using standardized inline source tags:
+
+[Knowledge Base]: Facts retrieved from stored documents.
+
+[Live MCP Tool]: Real-time weather and foreign exchange figures.
+
+[Assistant Reasoning]: Routing logic, itinerary schedules, and synthesis.
+
+Conditional Logic Execution: If precipitation probability is greater than 40%, the model executes conditional planning logic, automatically proposing indoor alternatives (museums, covered conservatories, shopping malls) in place of open-air spots.
+
+State & Memory Management: User budget limits, dietary preferences, and previously mentioned trip parameters are carried forward across dialogue turns using an in-memory session buffer.
+
+6. Setup & Execution Instructions (Item 18)
+Prerequisites
+Python 3.10 or higher
+
+Groq API Key and/or OpenAI API Key
+
+Step 1: Clone the Repository
+Bash
+git clone [https://github.com/sidhant97/ai-travel-planner.git](https://github.com/sidhant97/ai-travel-planner.git)
+cd ai-travel-planner
+Step 2: Set Up Virtual Environment
+macOS / Linux:
+
+Bash
+python3 -m venv venv
+source venv/bin/activate
+Windows (PowerShell):
+
+PowerShell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+Step 3: Install Dependencies
+Bash
+pip install -r requirements.txt
+Step 4: Configure Environment Variables
+Create a .env file in the project root:
+
+Ini, TOML
+# LLM Provider Configuration
 GROQ_API_KEY=gsk_your_groq_api_key_here
 GROQ_MODEL=llama-3.1-8b-instant
 OPENAI_API_KEY=sk-proj-your_openai_api_key_here
 OPENAI_MODEL=gpt-4o-mini
+Step 5: Ingest Knowledge Base
+Populate the ChromaDB vector database with the document chunks:
 
-```
+Bash
+python rag_engine.py
+Step 6: Launch the Application
+Run the Streamlit web interface:
 
----
+Bash
+streamlit run app.py
+Open your browser and navigate to http://localhost:8501.
 
-## Project Directory Structure
+Step 7: Run Automated Verification Tests
+Run the automated test suite covering tool execution, RAG search, and fallback handlers:
 
-```text
+Bash
+python test_suite.py
+7. Sample Questions & Application Responses (Item 19)
+Scenario 1: Pure Knowledge Base Retrieval (RAG)
+User Question: "What cultural etiquette rules and public transit guidelines should I follow in Singapore?"
+
+Executed Components: ChromaDB semantic retrieval (data/singapore/)
+
+Application Response:
+
+Public Transit Guidelines [Knowledge Base]:
+
+Eating, drinking, and smoking are strictly forbidden on all MRT trains and in stations, carrying fines up to SGD 500.
+
+Travel fares can be paid via contactless bank cards, mobile wallets, or an EZ-Link card.
+
+Cultural Etiquette [Knowledge Base]:
+
+Always remove your shoes before entering temples, mosques, or private residences.
+
+Tipping is not customary in Singapore, as a 10% service charge is already added to bills at most restaurants.
+
+Scenario 2: Pure MCP Tool Execution (Currency & Weather)
+User Question: "Convert 50,000 INR to SGD and tell me the weather forecast for Singapore tomorrow."
+
+Executed Components: convert_currency (Frankfurter API) + get_weather (Open-Meteo API)
+
+Application Response:
+
+Currency Conversion [Live MCP Tool]:
+
+Input Amount: 50,000 INR
+
+Converted Amount: ~787.00 SGD
+
+Reference Rate: 1 INR = 0.01574 SGD (ECB Reference Data)
+
+Weather Forecast for Tomorrow [Live MCP Tool]:
+
+Temperature: Min 26.2°C / Max 31.8°C
+
+Precipitation Probability: 70% (High risk of rain/thunderstorms)
+
+Scenario 3: Combined Response (RAG + Weather + FX + Synthesis)
+User Question: "Plan a 1-day itinerary for Singapore on an INR 20,000 budget. Include outdoor sights, but adjust with indoor alternatives if rain is expected."
+
+Executed Components: convert_currency + get_weather + ChromaDB Retrieval + Groq Synthesis
+
+Application Response:
+
+Budget Conversion [Live MCP Tool]:
+
+INR 20,000 converts to SGD 314.80 for day expenses.
+
+Weather Forecast [Live MCP Tool]:
+
+High: 31°C, Low: 26°C | Precipitation Probability: 65% (Rain Expected)
+
+Weather-Adaptive Itinerary [Knowledge Base & Assistant Reasoning]:
+
+Morning (Outdoor Plan): Gardens by the Bay outdoor grounds.
+
+Rain Backup Triggered (65% Rain Risk): Move inside the climate-controlled Flower Dome and Cloud Forest conservatories [Knowledge Base].
+
+Lunch: Maxwell Food Centre [Knowledge Base]. Try Hainanese Chicken Rice (~SGD 6–8) [Assistant Reasoning].
+
+Afternoon (Outdoor Plan): Walking tour through Chinatown and Marina Bay waterfront.
+
+Rain Backup Triggered: Explore the National Gallery Singapore or the Jewel Changi indoor canopy to remain sheltered [Knowledge Base].
+
+Evening: Dinner and covered observation deck visit at Marina Bay Sands [Knowledge Base].
+
+Scenario 4: Conversational Context & Multi-Turn Memory
+User Question (Follow-Up): "Can you adjust the schedule above to focus entirely on kid-friendly spots, while keeping the same budget?"
+
+Executed Components: Conversation Context Memory + ChromaDB Retrieval + Groq Synthesis
+
+Application Response:
+
+Preserved Context [Assistant Reasoning]:
+
+Allocated Budget: SGD 314.80 (~INR 20,000)
+
+Rain Contingency Active: Yes (65% precipitation probability preserved)
+
+Updated Family-Friendly Schedule [Knowledge Base]:
+
+Morning: Jacob Ballas Children's Garden (interactive nature play areas with covered rest shelters).
+
+Afternoon (Rain Contingency): S.E.A. Aquarium at Resorts World Sentosa (fully indoor marine exhibits suitable for all ages).
+
+Evening: Lau Pa Sat Satay Street for dinner, utilizing the sheltered open-air dining pavilions.
+
+Scenario 5: Guardrail Rejection (Out-of-Scope)
+User Question: "Can you book a flight ticket from New Delhi to Singapore for next Friday?"
+
+Executed Components: guardrails.py Domain Validation
+
+Application Response:
+
+I cannot book flights or process payment transactions. My capabilities are focused on travel destination research, weather-adaptive itinerary synthesis, and budget currency conversions. Please use an airline booking portal or travel agency for ticket purchases.
+
+8. Project Directory Structure
+Plaintext
 ai-travel-planner/
 ├── data/
-│   ├── singapore/                      # Default destination knowledge base
+│   ├── singapore/                        # Default destination knowledge base
 │   │   ├── visit_singapore_itineraries.md
 │   │   ├── visit_singapore_practical.md
 │   │   └── wikivoyage_singapore.md
-│   └── japan/                          # Modular country extension example
+│   └── japan/                            # Modular country extension example
 │       └── tokyo_travel_guide.md
-├── chroma_store/                       # Persistent local vector database
-├── .env                                # Local secrets & endpoints
-├── .gitignore                          # Git exclusions (.env, venv/, chroma_store/)
-├── app.py                              # Streamlit UI with multi-turn chat and TXT export
-├── guardrails.py                       # Input boundary and domain validation
-├── mcp_client.py                       # Client interface for tool calling
-├── mcp_server.py                       # Tool implementations for Weather & FX
-├── orchestrator.py                     # Multi-provider agent brain, routing, and fallback
-├── prompts.py                          # Prompt engineering & synthesis rules
-├── rag_engine.py                       # LangChain document chunking and vector storage
-├── requirements.txt                    # Project dependencies
-├── test_suite.py                       # Automated verification tests
-└── README.md                           # Project documentation
+├── chroma_store/                         # Persistent local Chroma vector database
+├── .env                                  # Environment keys and runtime configs
+├── .gitignore                            # Exclusions (venv, .env, chroma_store)
+├── app.py                                # Streamlit UI with chat interface and TXT export
+├── guardrails.py                         # Input validation and domain boundaries
+├── mcp_client.py                         # Client interface for tool execution
+├── mcp_server.py                         # MCP tool definitions (Open-Meteo & Frankfurter)
+├── orchestrator.py                       # Multi-provider agent brain, routing, and fallback
+├── prompts.py                            # Prompt engineering templates and synthesis rules
+├── rag_engine.py                         # LangChain chunking and vector store ingestion
+├── requirements.txt                      # Python dependencies
+├── test_suite.py                         # Automated test suite
+└── README.md                             # Project documentation
+9. Future Scope & Roadmap
+Expanded LLM Provider Integration: Integrate Anthropic Claude 3.5 Sonnet for deeper reasoning and long-context itinerary structuring.
 
-```
+Dynamic Cloud Vector Stores: Migrate local ChromaDB persistence to managed solutions like Pinecone, AWS OpenSearch, or pgvector, paired with an S3 ingestion pipeline.
 
----
+Containerized Deployment: Package the service with Docker and deploy via Kubernetes with auto-scaling to handle high concurrency.
 
-## Installation & Local Execution
+Additional Travel MCP Tools: Add Google Maps / Transit APIs for route calculation and web-scraping tools for flight/hotel estimations.
 
-**1. Clone the Repository**
+10. Developer Profile
+Developer Name: Sidhant Gupta
 
-```bash
-git clone https://github.com/sidhant97/ai-travel-planner.git
-cd ai-travel-planner
+Email: guptasidhant1997@gmail.com
 
-```
-
-**2. Create and Activate Virtual Environment**
-
-* Windows (PowerShell):
-```powershell
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-
-```
-
-
-* macOS / Linux:
-```bash
-python3 -m venv venv
-source venv/bin/activate
-
-```
-
-
-
-**3. Install Dependencies**
-
-```bash
-pip install -r requirements.txt
-
-```
-
-**4. Ingest Knowledge Base Documents**
-
-```bash
-python rag_engine.py
-
-```
-
-**5. Run the Application**
-
-```bash
-streamlit run app.py
-
-```
-
-Access the application at `http://localhost:8501`.
-
-**6. Run Verification Tests**
-
-```bash
-python test_suite.py
-
-```
-
----
-
-## Sample Queries & Acceptance Scenarios
-
-| Category | Sample User Prompt | Executed Components | Expected Outcome |
-| --- | --- | --- | --- |
-| **RAG Retrieval** | "What are the must-visit cultural neighbourhoods in Singapore?" | ChromaDB semantic search | Detailed breakdown citing source documentation. |
-| **RAG Retrieval** | "What indoor attractions can I visit with family?" | ChromaDB semantic search | Curated indoor locations filtered by family suitability. |
-| **Currency Tool** | "Convert INR 60,000 to SGD." | Frankfurter MCP Tool | Live conversion rate and converted amount displayed. |
-| **Currency Tool** | "How much is 200 SGD in INR?" | Frankfurter MCP Tool | Reverse conversion using current reference rates. |
-| **Weather Tool** | "What is the weather forecast for Singapore over the next 3 days?" | Open-Meteo MCP Tool | Daily temperature ranges and precipitation chances. |
-| **Weather Tool** | "Is rain expected during my trip tomorrow?" | Open-Meteo MCP Tool | Precipitation check for next-day schedule validation. |
-| **Combined Scenario** | "Plan a 3-day Singapore trip. I have a budget of INR 60,000. Adjust the itinerary for weather with indoor alternatives if it rains." | RAG + Weather Tool + FX Tool + LLM | Converted budget, structured 3-day plan, and weather-triggered indoor backups. |
-| **Multi-Turn Context** | *Follow-up:* "Can you replace the second day's dinner with authentic street food near Chinatown?" | Orchestrator Session History + RAG | Itinerary update preserving previously converted currency and itinerary days. |
-| **Out-of-Scope Test** | "Can you book a flight ticket from Delhi to Changi Airport?" | Domain Guardrails | Rejection message stating booking and reservations fall outside scope. |
-
----
-
-## Knowledge Base References (Sample Destination: Singapore)
-
-* **Wikivoyage: Singapore Travel Guide**: Transportation systems, neighborhood zones, cultural etiquette, and practical tips.
-* **Visit Singapore: Essential Travel Information**: Public transit cards, climate advisories, laws, and connectivity.
-* **Visit Singapore: Sample Itineraries & Things to Do**: Multi-day route blueprints, family activities, and landmark attractions.
-
----
-
-## Future Scope & Production Roadmap
-
-* **Advanced LLM Tier Support**: Incorporate Anthropic Claude 3.5 Sonnet and OpenAI GPT-4o for complex reasoning, multi-language translation, and long-horizon travel planning.
-* **Cloud Storage & Dynamic Document Ingestion**: Offload static document storage to Amazon S3 or Google Cloud Storage. Enable real-time document upload via the UI, syncing vector representations directly to a persistent managed vector database (e.g., Pinecone, AWS OpenSearch, or pgvector).
-* **Containerization & Orchestration**: Package the application into lightweight Docker containers and orchestrate deployments via Kubernetes (EKS/GKE) with horizontal pod autoscaling for high-concurrency usage.
-* **Expanded Multi-Country Support**: Extend automated ingestion pipelines to pull, validate, and chunk multi-country travel boards, dynamically switching vector namespaces based on user destination selection.
-* **Extended Tool Integrations**: Add transit routing MCP tools (Google Maps / Citymapper) and flight/hotel price estimation scrapers.
-
-
-##  Developer Profile
-
-* **Developer Name:** Sidhant Gupta
-* **Email Contact:** guptasidhant1997@gmail.com
-* **Contact Number:** +91-9996764596
-
-```
+Contact Number: +91-9996764596
