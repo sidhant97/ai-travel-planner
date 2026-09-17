@@ -1,4 +1,4 @@
-```markdown
+
 # AI Travel Planning Assistant
 
 A context-aware travel assistant combining a modular document-based knowledge base (Retrieval-Augmented Generation) with dynamic Model Context Protocol (MCP) tool execution. The application synthesizes static travel guide knowledge with live weather forecasts and real-time currency exchange rates to create weather-adaptive, budget-tailored itineraries.
@@ -36,7 +36,7 @@ While Singapore is implemented as the reference destination, the architecture is
 ### RAG Ingestion & Query Workflow
 
 
-```
+
 
 [Markdown Travel Guides] (data//*.md)
 │
@@ -55,7 +55,7 @@ While Singapore is implemented as the reference destination, the architecture is
 ▼
 [Grounded Model Output]
 
-```
+
 
 ---
 
@@ -77,7 +77,7 @@ The reference implementation uses static travel documentation stored in `data/si
    ```bash
    python rag_engine.py
 
-```
+
 
 ---
 
@@ -91,10 +91,9 @@ Both integrated tools require no API keys and operate using the Model Context Pr
 * **Method:** `GET`
 * **Authentication:** None required
 * **Sample Request:**
-```http
+http
 GET [https://api.open-meteo.com/v1/forecast?latitude=1.3521&longitude=103.8198&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia/Singapore](https://api.open-meteo.com/v1/forecast?latitude=1.3521&longitude=103.8198&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia/Singapore)
 
-```
 
 
 * **Payload Output:** Maximum and minimum daily temperatures, precipitation probability metrics, and weather condition codes used to dynamically trigger indoor alternatives.
@@ -105,10 +104,10 @@ GET [https://api.open-meteo.com/v1/forecast?latitude=1.3521&longitude=103.8198&d
 * **Method:** `GET`
 * **Authentication:** None required (European Central Bank reference data)
 * **Sample Request:**
-```http
+http
 GET [https://api.frankfurter.app/latest?amount=60000&from=INR&to=SGD](https://api.frankfurter.app/latest?amount=60000&from=INR&to=SGD)
 
-```
+
 
 
 * **Payload Output:** Real-time exchange rates and converted currency totals used to establish localized traveler spending limits.
