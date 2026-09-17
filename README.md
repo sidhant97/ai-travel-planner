@@ -38,23 +38,29 @@ While Singapore is implemented as the reference destination, the architecture is
 
 
 
-[Markdown Travel Guides] (data//*.md)
-│
-▼
-[RecursiveCharacterTextSplitter] (chunk_size=1000, chunk_overlap=150)
-│
-▼
-[Vector Embeddings] (HuggingFace / OpenAI Embeddings)
-│
-▼
-[ChromaDB Namespaces] (e.g., ./chroma_store/singapore)
-│
-▼ (Semantic Similarity Search: Top-K Chunks)
-[Context Synthesis Orchestrator] ◄───► [MCP Tools: Weather & FX]
-│
-▼
-[Grounded Model Output]
+```mermaid
+flowchart TD
+    subgraph Ingestion["1. Ingestion Pipeline (Offline)"]
+        A[Markdown Travel Guides<br/><code>data/&lt;destination&gt;/*.md</code>] --> B[RecursiveCharacterTextSplitter<br/><code>chunk=1000, overlap=150</code>]
+        B --> C[Embedding Model<br/>HuggingFace / OpenAI]
+        C --> D[(ChromaDB Namespaces<br/><code>./chroma_store/singapore</code>)]
+    end
 
+    subgraph Runtime["2. Query & Synthesis Runtime"]
+        Q([User Travel Query]) --> G{Domain Guardrails}
+        G -->|Valid| O[Context Synthesis Orchestrator]
+        
+        O <-->|Semantic Search Top-K| D
+        O <-->|Live Context| T[MCP Tools]
+        
+        subgraph Tools["MCP Tool Execution"]
+            T <--> W[Open-Meteo<br/>Live Weather]
+            T <--> F[Frankfurter<br/>ECB FX Rates]
+        end
+        
+        O --> L[LLM Engine<br/>Groq LLaMA 3.1 ──► OpenAI Failover]
+        L --> Out([Grounded Weather-Adaptive Plan])
+    end
 
 
 ---
