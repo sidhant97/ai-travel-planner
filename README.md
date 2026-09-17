@@ -155,6 +155,12 @@ GROQ_API_KEY=gsk_your_groq_api_key_here
 GROQ_MODEL=llama-3.1-8b-instant
 OPENAI_API_KEY=sk-proj-your_openai_api_key_here
 OPENAI_MODEL=gpt-4o-mini
+CHROMA_PERSIST_DIR=./chroma_store
+DATA_DIR=./data
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=lsv2_pt_8989f832b70e426_api_key_here
+LANGCHAIN_PROJECT=travel-rag-project
+LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
 
 ```
 
