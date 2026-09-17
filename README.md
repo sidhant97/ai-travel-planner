@@ -9,14 +9,14 @@ While Singapore is implemented as the reference destination, the architecture is
 
 ## 1. Deliverables & Project Assets
 
-* **Source Code Repository (Item 15):** [GitHub Repository](https://github.com/sidhant97/ai-travel-planner.git)
-* **Working Application (Item 16):** Fully functional Streamlit interface executable locally on port `8501`.
+* **Source Code Repository :** [ai-travel-planner](https://github.com/sidhant97/ai-travel-planner.git)
+* **Working Application:** Fully functional Streamlit interface executable locally on port `8501`.
 * **Backup Source Code:** [Google Drive Link]
-* **Demonstration Video (Item 20):** [Google Drive Link] *(Walkthrough showcasing pure RAG retrieval, MCP tool calling, combined context synthesis, and conversational context memory).*
+* **Demonstration Video :** [Google Drive Link] *(Walkthrough showcasing pure RAG retrieval, MCP tool calling, combined context synthesis, and conversational context memory).*
 
 ---
 
-## 2. System Architecture & RAG Workflow (Item 18)
+## 2. System Architecture & RAG Workflow 
 
 ### System Architecture
 
@@ -35,7 +35,7 @@ While Singapore is implemented as the reference destination, the architecture is
 
 ---
 
-## 3. Knowledge-Base Sources & Ingestion (Items 17 & 18)
+## 3. Knowledge-Base Sources & Ingestion 
 
 The reference implementation uses static travel documentation stored in `data/singapore/`.
 
@@ -57,7 +57,7 @@ The reference implementation uses static travel documentation stored in `data/si
 
 ---
 
-## 4. MCP Tools & API Specifications (Item 18)
+## 4. MCP Tools & API Specifications
 
 Both integrated tools require no API keys and operate using the Model Context Protocol pattern:
 
@@ -90,7 +90,7 @@ GET [https://api.frankfurter.app/latest?amount=60000&from=INR&to=SGD](https://ap
 
 ---
 
-## 5. Prompt Engineering & Context Strategy (Item 18)
+## 5. Prompt Engineering & Context Strategy 
 
 * **Strict Grounding & Zero-Hallucination:** The model is strictly instructed to draw destination facts exclusively from retrieved chunks. If the vector store lacks the requested information, the model explicitly states that the information is unavailable rather than fabricating recommendations.
 * **Tool-RAG Boundary Enforcement:** Static domain knowledge (attractions, culture, neighborhoods) must come from RAG retrieval. Dynamic, time-sensitive metrics (weather, currency rates) must strictly trigger MCP tools.
@@ -105,7 +105,7 @@ GET [https://api.frankfurter.app/latest?amount=60000&from=INR&to=SGD](https://ap
 
 ---
 
-## 6. Setup & Execution Instructions (Item 18)
+## 6. Setup & Execution Instructions 
 
 ### Prerequisites
 
